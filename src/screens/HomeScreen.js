@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 
 import {
@@ -277,13 +278,14 @@ const styles = StyleSheet.create({
   },
   main: {
     paddingHorizontal: 20,
+    paddingTop: 5,
   },
   listTitle: {
     fontSize: 19,
     fontWeight: 'bold',
     color: '#111111',
-    marginTop: 15,
-    marginBottom: 5,
+    marginTop: 18,
+    marginBottom: 8,
   },
   finishButton: {
     backgroundColor: '#111111',
@@ -354,3 +356,4 @@ const styles = StyleSheet.create({
     color: '#555555',
   },
 });
+                
