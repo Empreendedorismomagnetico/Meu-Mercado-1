@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 
 import {
@@ -21,14 +20,19 @@ export default function HistoryScreen() {
   const [purchases, setPurchases] = useState([]);
   const [mode, setMode] = useState('list');
   const [selectedPurchase, setSelectedPurchase] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(null);
   const [location, setLocation] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
   const [month, setMonth] = useState(new Date());
 
   async function loadHistory() {
-    const history = await getPurchaseHistory();
-    setPurchases(history);
+    try {
+      const history = await getPurchaseHistory();
+      setPurchases(history);
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível carregar o histórico.');
+    }
   }
 
   useEffect(() => {
@@ -46,6 +50,10 @@ export default function HistoryScreen() {
     });
   }
 
+  function formatMoney(value) {
+    return Number(value || 0).toFixed(2).replace('.', ',');
+  }
+
   function openPurchase(purchase) {
     setSelectedPurchase(purchase);
     setLocation(purchase.location || '');
@@ -54,6 +62,8 @@ export default function HistoryScreen() {
   }
 
   async function saveDetails() {
+    if (!selectedPurchase) return;
+
     try {
       await updatePurchaseDetails(selectedPurchase.id, {
         location,
@@ -78,42 +88,22 @@ export default function HistoryScreen() {
         1
       )
     );
+
+    setSelectedDay(null);
   }
 
   function openCalendarDay(day) {
-    const selectedDate = new Date(
-      month.getFullYear(),
-      month.getMonth(),
-      day
-    );
-
     const dayPurchases = purchases.filter(purchase => {
       const date = new Date(purchase.date);
 
       return (
-        date.getDate() === selectedDate.getDate() &&
-        date.getMonth() === selectedDate.getMonth() &&
-        date.getFullYear() === selectedDate.getFullYear()
+        date.getDate() === day &&
+        date.getMonth() === month.getMonth() &&
+        date.getFullYear() === month.getFullYear()
       );
     });
 
-    if (dayPurchases.length === 0) return;
-
-    if (dayPurchases.length === 1) {
-      openPurchase(dayPurchases[0]);
-      return;
-    }
-
-    Alert.alert(
-      'Compras do dia',
-      dayPurchases.map((item, index) =>
-        `${index + 1}. ${formatTime(item.date)} — R$ ${Number(item.total).toFixed(2).replace('.', ',')}`
-      ).join('\n'),
-      dayPurchases.map((item, index) => ({
-        text: `${formatTime(item.date)} - R$ ${Number(item.total).toFixed(2).replace('.', ',')}`,
-        onPress: () => openPurchase(item),
-      })).concat([{ text: 'Fechar', style: 'cancel' }])
-    );
+    setSelectedDay(dayPurchases.length > 0 ? day : null);
   }
 
   const firstDay = new Date(
@@ -133,11 +123,55 @@ export default function HistoryScreen() {
     year: 'numeric',
   });
 
+  const selectedDayPurchases = selectedDay
+    ? purchases
+        .filter(purchase => {
+          const date = new Date(purchase.date);
+
+          return (
+            date.getDate() === selectedDay &&
+            date.getMonth() === month.getMonth() &&
+            date.getFullYear() === month.getFullYear()
+          );
+        })
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+    : [];
+
+  function renderPurchase(purchase) {
+    return (
+      <TouchableOpacity
+        key={purchase.id}
+        style={styles.purchase}
+        onPress={() => openPurchase(purchase)}
+      >
+        <View style={styles.purchaseInfo}>
+          <Text style={styles.date}>
+            {formatDate(purchase.date)}
+          </Text>
+
+          <Text style={styles.time}>
+            {formatTime(purchase.date)}
+            {purchase.location ? ` · ${purchase.location}` : ''}
+          </Text>
+
+          <Text style={styles.extra}>
+            {purchase.paymentMethod || 'Adicionar forma de pagamento'}
+          </Text>
+        </View>
+
+        <Text style={styles.total}>
+          R$ {formatMoney(purchase.total)}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Histórico</Text>
-        <Text style={styles.subtitle}>Suas compras registradas</Text>
+        <Text style={styles.subtitle}>
+          Suas compras registradas
+        </Text>
       </View>
 
       <View style={styles.tabs}>
@@ -146,7 +180,7 @@ export default function HistoryScreen() {
           onPress={() => setMode('list')}
         >
           <Text style={[styles.tabText, mode === 'list' && styles.activeText]}>
-            ☰ Lista
+            Lista
           </Text>
         </TouchableOpacity>
 
@@ -155,7 +189,7 @@ export default function HistoryScreen() {
           onPress={() => setMode('calendar')}
         >
           <Text style={[styles.tabText, mode === 'calendar' && styles.activeText]}>
-            ▦ Calendário
+            Calendário
           </Text>
         </TouchableOpacity>
       </View>
@@ -167,100 +201,124 @@ export default function HistoryScreen() {
               Nenhuma compra registrada ainda.
             </Text>
           ) : (
-            purchases.map(purchase => (
-              <TouchableOpacity
-                key={purchase.id}
-                style={styles.purchase}
-                onPress={() => openPurchase(purchase)}
-              >
-                <View style={styles.purchaseInfo}>
-                  <Text style={styles.date}>
-                    {formatDate(purchase.date)}
-                  </Text>
-
-                  <Text style={styles.time}>
-                    {formatTime(purchase.date)}
-                    {purchase.location ? ` · ${purchase.location}` : ''}
-                  </Text>
-
-                  <Text style={styles.extra}>
-                    {purchase.paymentMethod || 'Adicionar forma de pagamento'}
-                  </Text>
-                </View>
-
-                <Text style={styles.total}>
-                  R$ {Number(purchase.total).toFixed(2).replace('.', ',')}
-                </Text>
-              </TouchableOpacity>
-            ))
+            purchases.map(renderPurchase)
           )}
         </ScrollView>
       ) : (
-        <View style={styles.calendar}>
-          <View style={styles.monthHeader}>
-            <TouchableOpacity onPress={() => changeMonth(-1)}>
-              <Text style={styles.arrow}>‹</Text>
-            </TouchableOpacity>
+        <ScrollView style={styles.scroll}>
+          <View style={styles.calendar}>
+            <View style={styles.monthHeader}>
+              <TouchableOpacity onPress={() => changeMonth(-1)}>
+                <Text style={styles.arrow}>‹</Text>
+              </TouchableOpacity>
 
-            <Text style={styles.monthTitle}>{monthName}</Text>
+              <Text style={styles.monthTitle}>{monthName}</Text>
 
-            <TouchableOpacity onPress={() => changeMonth(1)}>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity onPress={() => changeMonth(1)}>
+                <Text style={styles.arrow}>›</Text>
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.grid}>
-            {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => (
-              <View key={index} style={styles.dayCell}>
-                <Text style={styles.weekDay}>{day}</Text>
-              </View>
-            ))}
+            <View style={styles.grid}>
+              {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => (
+                <View key={index} style={styles.dayCell}>
+                  <Text style={styles.weekDay}>{day}</Text>
+                </View>
+              ))}
 
-            {Array.from({ length: firstDay }).map((_, index) => (
-              <View key={`empty-${index}`} style={styles.dayCell} />
-            ))}
+              {Array.from({ length: firstDay }).map((_, index) => (
+                <View
+                  key={`empty-${index}`}
+                  style={styles.dayCell}
+                />
+              ))}
 
-            {Array.from({ length: daysInMonth }).map((_, index) => {
-              const day = index + 1;
+              {Array.from({ length: daysInMonth }).map((_, index) => {
+                const day = index + 1;
 
-              const hasPurchase = purchases.some(purchase => {
-                const date = new Date(purchase.date);
+                const hasPurchase = purchases.some(purchase => {
+                  const date = new Date(purchase.date);
+
+                  return (
+                    date.getDate() === day &&
+                    date.getMonth() === month.getMonth() &&
+                    date.getFullYear() === month.getFullYear()
+                  );
+                });
+
+                const isSelected = selectedDay === day;
 
                 return (
-                  date.getDate() === day &&
-                  date.getMonth() === month.getMonth() &&
-                  date.getFullYear() === month.getFullYear()
+                  <TouchableOpacity
+                    key={day}
+                    style={[
+                      styles.dayCell,
+                      hasPurchase && styles.purchaseDay,
+                      isSelected && styles.selectedDay,
+                    ]}
+                    onPress={() => openCalendarDay(day)}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        hasPurchase && styles.purchaseDayText,
+                        isSelected && styles.selectedDayText,
+                      ]}
+                    >
+                      {day}
+                    </Text>
+
+                    {hasPurchase && (
+                      <View
+                        style={[
+                          styles.dot,
+                          isSelected && styles.selectedDot,
+                        ]}
+                      />
+                    )}
+                  </TouchableOpacity>
                 );
-              });
+              })}
+            </View>
 
-              return (
-                <TouchableOpacity
-                  key={day}
-                  style={[
-                    styles.dayCell,
-                    hasPurchase && styles.purchaseDay,
-                  ]}
-                  onPress={() => openCalendarDay(day)}
-                >
-                  <Text style={[
-                    styles.dayText,
-                    hasPurchase && styles.purchaseDayText,
-                  ]}>
-                    {day}
-                  </Text>
+            <Text style={styles.calendarHint}>
+              Toque em um dia marcado para consultar suas compras.
+            </Text>
 
-                  {hasPurchase && <View style={styles.dot} />}
-                </TouchableOpacity>
-              );
-            })}
+            {selectedDay !== null && (
+              <View style={styles.dayPurchases}>
+                <Text style={styles.sectionTitle}>
+                  Compras do dia {String(selectedDay).padStart(2, '0')}/
+                  {String(month.getMonth() + 1).padStart(2, '0')}/
+                  {month.getFullYear()}
+                </Text>
+
+                {selectedDayPurchases.map(purchase => (
+                  <TouchableOpacity
+                    key={purchase.id}
+                    style={styles.dayPurchase}
+                    onPress={() => openPurchase(purchase)}
+                  >
+                    <View style={styles.purchaseInfo}>
+                      <Text style={styles.date}>
+                        Compra às {formatTime(purchase.date)}
+                      </Text>
+
+                      <Text style={styles.extra}>
+                        {purchase.location || 'Local não informado'}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.total}>
+                      R$ {formatMoney(purchase.total)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
-
-          <Text style={styles.calendarHint}>
-            Toque em um dia marcado para consultar suas compras.
-          </Text>
-        </View>
+        </ScrollView>
       )}
-
       <Modal
         visible={!!selectedPurchase}
         transparent
@@ -270,12 +328,14 @@ export default function HistoryScreen() {
         <View style={styles.modalBackground}>
           <ScrollView contentContainerStyle={styles.modalContainer}>
             <View style={styles.modal}>
-              <Text style={styles.modalTitle}>Detalhes da compra</Text>
+              <Text style={styles.modalTitle}>
+                Detalhes da compra
+              </Text>
 
               {selectedPurchase && (
                 <>
                   <Text style={styles.modalTotal}>
-                    R$ {Number(selectedPurchase.total).toFixed(2).replace('.', ',')}
+                    R$ {formatMoney(selectedPurchase.total)}
                   </Text>
 
                   <Text style={styles.modalDate}>
@@ -284,14 +344,17 @@ export default function HistoryScreen() {
 
                   <Text style={styles.sectionTitle}>Produtos</Text>
 
-                  {selectedPurchase.products.map(product => (
-                    <View key={product.id} style={styles.productRow}>
+                  {selectedPurchase.products.map((product, index) => (
+                    <View
+                      key={product.id || `${product.name}-${index}`}
+                      style={styles.productRow}
+                    >
                       <Text style={styles.productName}>
                         {product.name} ({product.quantity}x)
                       </Text>
 
                       <Text style={styles.productPrice}>
-                        R$ {(product.quantity * product.price).toFixed(2).replace('.', ',')}
+                        R$ {formatMoney(product.quantity * product.price)}
                       </Text>
                     </View>
                   ))}
@@ -329,7 +392,9 @@ export default function HistoryScreen() {
                     style={styles.saveButton}
                     onPress={saveDetails}
                   >
-                    <Text style={styles.saveText}>Salvar informações</Text>
+                    <Text style={styles.saveText}>
+                      Salvar informações
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -390,18 +455,18 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flex: 1,
-    paddingHorizontal: 20,
   },
   empty: {
     textAlign: 'center',
     color: '#888888',
-    padding: 35,
+    padding: 25,
   },
   purchase: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 18,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
   },
@@ -465,28 +530,57 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   purchaseDay: {
-    backgroundColor: '#111111',
+    backgroundColor: '#EEEEEE',
     borderRadius: 10,
   },
   purchaseDayText: {
-    color: '#FFFFFF',
+    color: '#111111',
     fontWeight: 'bold',
+  },
+  selectedDay: {
+    backgroundColor: '#111111',
+  },
+  selectedDayText: {
+    color: '#FFFFFF',
   },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#111111',
     marginTop: 2,
+  },
+  selectedDot: {
+    backgroundColor: '#FFFFFF',
   },
   calendarHint: {
     textAlign: 'center',
     color: '#888888',
-    marginTop: 25,
+    marginTop: 20,
     fontSize: 12,
   },
+  dayPurchases: {
+    marginTop: 25,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+  },
+  dayPurchase: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+  },
   modalBackground: {
-    flexGrow: 1,
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     padding: 15,
@@ -513,12 +607,6 @@ const styles = StyleSheet.create({
   modalDate: {
     color: '#888888',
     marginTop: 5,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    marginTop: 24,
-    marginBottom: 10,
   },
   productRow: {
     flexDirection: 'row',
@@ -568,4 +656,3 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
 });
-        
