@@ -9,6 +9,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
+  SafeAreaView,
 } from 'react-native';
 
 import HomeScreen from './src/screens/HomeScreen';
@@ -48,65 +49,72 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar
         backgroundColor="#FFFFFF"
         barStyle="dark-content"
       />
 
-      <View style={styles.navigation}>
-        <TouchableOpacity
-          style={[
-            styles.navButton,
-            currentPage === 0 && styles.activeButton,
-          ]}
-          onPress={() => navigateTo(0)}
-        >
-          <Text style={[
-            styles.navText,
-            currentPage === 0 && styles.activeText,
-          ]}>
-            Compras
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <View style={styles.navigation}>
+          <TouchableOpacity
+            style={[
+              styles.navButton,
+              currentPage === 0 && styles.activeButton,
+            ]}
+            onPress={() => navigateTo(0)}
+          >
+            <Text style={[
+              styles.navText,
+              currentPage === 0 && styles.activeText,
+            ]}>
+              Compras
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.navButton,
-            currentPage === 1 && styles.activeButton,
-          ]}
-          onPress={() => navigateTo(1)}
+          <TouchableOpacity
+            style={[
+              styles.navButton,
+              currentPage === 1 && styles.activeButton,
+            ]}
+            onPress={() => navigateTo(1)}
+          >
+            <Text style={[
+              styles.navText,
+              currentPage === 1 && styles.activeText,
+            ]}>
+              Histórico
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handlePageChange}
+          nestedScrollEnabled
         >
-          <Text style={[
-            styles.navText,
-            currentPage === 1 && styles.activeText,
-          ]}>
-            Histórico
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.page}>
+            <HomeScreen />
+          </View>
+
+          <View style={styles.page}>
+            <HistoryScreen key={historyKey} />
+          </View>
+        </ScrollView>
       </View>
-
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handlePageChange}
-        nestedScrollEnabled
-      >
-        <View style={styles.page}>
-          <HomeScreen />
-        </View>
-
-        <View style={styles.page}>
-          <HistoryScreen key={historyKey} />
-        </View>
-      </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -115,7 +123,8 @@ const styles = StyleSheet.create({
   navigation: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingTop: 18,
+    paddingBottom: 10,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
@@ -147,3 +156,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+              
