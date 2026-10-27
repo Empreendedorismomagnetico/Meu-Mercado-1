@@ -56,36 +56,40 @@ export default function App() {
       />
 
       <View style={styles.container}>
-        <View style={styles.navigation}>
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              currentPage === 0 && styles.activeButton,
-            ]}
-            onPress={() => navigateTo(0)}
-          >
-            <Text style={[
-              styles.navText,
-              currentPage === 0 && styles.activeText,
-            ]}>
-              Compras
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.navigationContainer}>
+          <View style={styles.navigation}>
+            <TouchableOpacity
+              style={[
+                styles.navButton,
+                currentPage === 0 && styles.activeButton,
+              ]}
+              onPress={() => navigateTo(0)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.navText,
+                currentPage === 0 && styles.activeText,
+              ]}>
+                Compras
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              currentPage === 1 && styles.activeButton,
-            ]}
-            onPress={() => navigateTo(1)}
-          >
-            <Text style={[
-              styles.navText,
-              currentPage === 1 && styles.activeText,
-            ]}>
-              Histórico
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.navButton,
+                currentPage === 1 && styles.activeButton,
+              ]}
+              onPress={() => navigateTo(1)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.navText,
+                currentPage === 1 && styles.activeText,
+              ]}>
+                Histórico
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView
@@ -120,29 +124,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
+  navigationContainer: {
+    paddingHorizontal: 35,
+    paddingTop: 18,
+    paddingBottom: 14,
+    backgroundColor: '#FFFFFF',
+  },
+
   navigation: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D5D5D5',
+    borderRadius: 30,
+    padding: 3,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
   },
 
   navButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
 
   activeButton: {
     backgroundColor: '#111111',
+    borderColor: '#111111',
   },
 
   navText: {
-    color: '#555555',
+    color: '#777777',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -156,4 +171,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-              
