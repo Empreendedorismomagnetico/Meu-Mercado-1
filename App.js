@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
 
   navigationContainer: {
     paddingHorizontal: 35,
-    paddingTop: 18,
+    paddingTop: 43,
     paddingBottom: 14,
     backgroundColor: '#FFFFFF',
   },
@@ -171,3 +171,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+                
