@@ -40,7 +40,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --stacktrace --info
 
       - name: Disponibilizar APK para download
         uses: actions/upload-artifact@v4
@@ -48,4 +48,3 @@ jobs:
           name: Meu-Mercado-APK
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          
