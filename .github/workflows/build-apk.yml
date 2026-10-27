@@ -1,3 +1,4 @@
+
 name: Gerar APK - Meu Mercado
 
 on:
@@ -19,7 +20,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Configurar Java
         uses: actions/setup-java@v4
@@ -29,6 +29,9 @@ jobs:
 
       - name: Instalar dependências
         run: npm install
+
+      - name: Conferir Expo
+        run: npx expo --version
 
       - name: Gerar projeto Android
         run: npx expo prebuild --platform android --no-install --clean
@@ -45,3 +48,4 @@ jobs:
           name: Meu-Mercado-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          
