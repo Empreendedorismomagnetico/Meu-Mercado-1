@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   View,
@@ -31,7 +30,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     backgroundColor: '#111111',
     borderRadius: 16,
-    marginVertical: 15,
+    marginTop: 15,
+    marginBottom: 22,
   },
 
   label: {
