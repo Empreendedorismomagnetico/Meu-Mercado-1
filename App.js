@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 import {
   View,
@@ -7,6 +7,8 @@ import {
   Dimensions,
   StatusBar,
   StyleSheet,
+  TouchableOpacity,
+  Text,
 } from 'react-native';
 
 import HomeScreen from './src/screens/HomeScreen';
@@ -17,6 +19,20 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function App() {
   const [currentPage, setCurrentPage] = useState(0);
   const [historyKey, setHistoryKey] = useState(0);
+  const scrollRef = useRef(null);
+
+  function navigateTo(page) {
+    scrollRef.current?.scrollTo({
+      x: page * SCREEN_WIDTH,
+      animated: true,
+    });
+
+    setCurrentPage(page);
+
+    if (page === 1) {
+      setHistoryKey(value => value + 1);
+    }
+  }
 
   function handlePageChange(event) {
     const position = event.nativeEvent.contentOffset.x;
@@ -38,7 +54,40 @@ export default function App() {
         barStyle="dark-content"
       />
 
+      <View style={styles.navigation}>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            currentPage === 0 && styles.activeButton,
+          ]}
+          onPress={() => navigateTo(0)}
+        >
+          <Text style={[
+            styles.navText,
+            currentPage === 0 && styles.activeText,
+          ]}>
+            Compras
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            currentPage === 1 && styles.activeButton,
+          ]}
+          onPress={() => navigateTo(1)}
+        >
+          <Text style={[
+            styles.navText,
+            currentPage === 1 && styles.activeText,
+          ]}>
+            Histórico
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
+        ref={scrollRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -61,6 +110,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+
+  navigation: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+
+  navButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+
+  activeButton: {
+    backgroundColor: '#111111',
+  },
+
+  navText: {
+    color: '#555555',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  activeText: {
+    color: '#FFFFFF',
   },
 
   page: {
