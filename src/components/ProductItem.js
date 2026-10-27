@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   View,
@@ -55,6 +54,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
+    marginHorizontal: 2,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
