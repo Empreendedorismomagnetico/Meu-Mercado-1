@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   View,
@@ -32,6 +31,9 @@ export default function ProductList({
             />
           )}
           scrollEnabled={false}
+          ItemSeparatorComponent={() => (
+            <View style={styles.separator} />
+          )}
         />
       )}
     </View>
@@ -41,7 +43,11 @@ export default function ProductList({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginTop: 10,
+    marginTop: 12,
+    paddingHorizontal: 5,
+  },
+  separator: {
+    height: 8,
   },
   empty: {
     textAlign: 'center',
