@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import {
   View,
@@ -26,6 +25,9 @@ import {
 export default function HomeScreen() {
   const [products, setProducts] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+
+  const saveQueue = useRef(Promise.resolve());
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editName, setEditName] = useState('');
@@ -43,10 +45,12 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (loaded) {
-      saveCurrentPurchase(products);
-    }
-  }, [products, loaded]);
+    if (!loaded || finalizing) return;
+
+    saveQueue.current = saveQueue.current.then(() =>
+      saveCurrentPurchase(products)
+    );
+  }, [products, loaded, finalizing]);
 
   const total = products.reduce((sum, item) => {
     return sum + Number(item.quantity) * Number(item.price);
@@ -67,8 +71,13 @@ export default function HomeScreen() {
     const quantity = Number(editQuantity.replace(',', '.'));
     const price = Number(editPrice.replace(',', '.'));
 
-    if (!editName.trim() || !Number.isFinite(quantity) ||
-        !Number.isFinite(price) || quantity <= 0 || price < 0) {
+    if (
+      !editName.trim() ||
+      !Number.isFinite(quantity) ||
+      !Number.isFinite(price) ||
+      quantity <= 0 ||
+      price < 0
+    ) {
       Alert.alert('Atenção', 'Confira o nome, a quantidade e o preço.');
       return;
     }
@@ -108,7 +117,30 @@ export default function HomeScreen() {
     );
   }
 
-  async function finalizeList() {
+  async function handleFinalize() {
+    if (finalizing) return;
+
+    try {
+      setFinalizing(true);
+
+      await saveQueue.current;
+      await finishPurchase(products);
+
+      setProducts([]);
+      setSelectedProduct(null);
+
+      Alert.alert(
+        'Compra salva!',
+        'Sua lista foi registrada no histórico.'
+      );
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível salvar a compra.');
+    } finally {
+      setFinalizing(false);
+    }
+  }
+
+  function finalizeList() {
     if (products.length === 0) {
       Alert.alert('Lista vazia', 'Adicione produtos antes de finalizar.');
       return;
@@ -121,15 +153,7 @@ export default function HomeScreen() {
         { text: 'Continuar comprando', style: 'cancel' },
         {
           text: 'Finalizar',
-          onPress: async () => {
-            try {
-              await finishPurchase(products);
-              setProducts([]);
-              Alert.alert('Compra salva!', 'Sua lista foi registrada no histórico.');
-            } catch (error) {
-              Alert.alert('Erro', 'Não foi possível salvar a compra.');
-            }
-          },
+          onPress: handleFinalize,
         },
       ]
     );
@@ -167,9 +191,10 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={styles.finishButton}
                 onPress={finalizeList}
+                disabled={finalizing}
               >
                 <Text style={styles.finishText}>
-                  Finalizar lista
+                  {finalizing ? 'Salvando...' : 'Finalizar lista'}
                 </Text>
               </TouchableOpacity>
             </>
