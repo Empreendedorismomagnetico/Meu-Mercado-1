@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
@@ -17,13 +16,14 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 32,
+    paddingBottom: 20,
     backgroundColor: '#FFFFFF',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
   },
   icon: {
