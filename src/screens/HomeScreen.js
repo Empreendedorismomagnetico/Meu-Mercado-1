@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 
 import {
@@ -22,6 +21,27 @@ import {
   getCurrentPurchase,
   finishPurchase,
 } from '../storage/database';
+
+// Formata os números como moeda brasileira
+function formatCurrencyInput(value) {
+  const digits = String(value).replace(/\D/g, '');
+
+  const number = Number(digits || 0) / 100;
+
+  return number.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+// Converte o valor formatado em número
+function parseCurrencyInput(value) {
+  return Number(
+    String(value)
+      .replace(/\./g, '')
+      .replace(',', '.')
+  ) || 0;
+}
 
 export default function HomeScreen() {
   const [products, setProducts] = useState([]);
@@ -60,17 +80,21 @@ export default function HomeScreen() {
   function addProduct(product) {
     setProducts(current => [...current, product]);
   }
-
-  function openProduct(product) {
+    function openProduct(product) {
     setSelectedProduct(product);
     setEditName(product.name);
     setEditQuantity(String(product.quantity));
-    setEditPrice(String(product.price).replace('.', ','));
+
+    setEditPrice(
+      formatCurrencyInput(
+        Math.round(Number(product.price || 0) * 100)
+      )
+    );
   }
 
   function updateProduct() {
     const quantity = Number(editQuantity.replace(',', '.'));
-    const price = Number(editPrice.replace(',', '.'));
+    const price = parseCurrencyInput(editPrice);
 
     if (
       !editName.trim() ||
@@ -202,7 +226,6 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
-
       <Modal
         visible={!!selectedProduct}
         transparent
@@ -234,16 +257,21 @@ export default function HomeScreen() {
             <TextInput
               style={styles.input}
               value={editPrice}
-              onChangeText={setEditPrice}
-              keyboardType="decimal-pad"
+              onChangeText={(value) =>
+                setEditPrice(formatCurrencyInput(value))
+              }
+              keyboardType="number-pad"
             />
 
             <Text style={styles.subtotal}>
               Subtotal: R$ {
                 (
                   (Number(editQuantity.replace(',', '.')) || 0) *
-                  (Number(editPrice.replace(',', '.')) || 0)
-                ).toFixed(2).replace('.', ',')
+                  parseCurrencyInput(editPrice)
+                ).toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
               }
             </Text>
 
@@ -356,4 +384,3 @@ const styles = StyleSheet.create({
     color: '#555555',
   },
 });
-                
