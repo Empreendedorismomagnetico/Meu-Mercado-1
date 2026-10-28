@@ -1357,8 +1357,12 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
 
-  saveButtonText: {
+    saveButtonText: {
     color: COLORS.white,
     fontWeight: 'bold',
+  },
+
+  scrollContent: {
+    paddingBottom: 100,
   },
 });
