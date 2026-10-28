@@ -489,7 +489,10 @@ export default function HistoryScreen() {
       }
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+  showsVerticalScrollIndicator={false}
+  contentContainerStyle={styles.scrollContent}
+>
         <Text style={styles.pageTitle}>Histórico</Text>
 
         <Text style={styles.subtitle}>
