@@ -1,14 +1,13 @@
+import React, { useState, useEffect } from 'react';
 
-import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  TextInput,
   Modal,
+  TextInput,
   StyleSheet,
-  Alert,
 } from 'react-native';
 
 import {
@@ -17,63 +16,66 @@ import {
 } from '../storage/database';
 
 const COLORS = {
-  primary: '#2878D0',
-  background: '#F5F7FA',
+  primary: '#2878C8',
+  background: '#F4F7FB',
   white: '#FFFFFF',
-  text: '#222222',
-  muted: '#777777',
-  border: '#E5E7EB',
-  green: '#159957',
+  text: '#263238',
+  muted: '#78909C',
+  border: '#E0E6ED',
+  green: '#2E9D65',
+  red: '#E05252',
 };
 
-const formatMoney = (value) => {
+function formatMoney(value) {
   return Number(value || 0).toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   });
-};
+}
 
-const formatDate = (date) => {
+function formatDate(date) {
   return new Date(date).toLocaleDateString('pt-BR');
-};
+}
 
-const startOfDay = (date) => {
+function startOfDay(date) {
   const result = new Date(date);
   result.setHours(0, 0, 0, 0);
   return result;
-};
+}
 
-const endOfDay = (date) => {
+function endOfDay(date) {
   const result = new Date(date);
   result.setHours(23, 59, 59, 999);
   return result;
-};
+}
 
-const addDays = (date, days) => {
+function addDays(date, amount) {
   const result = new Date(date);
-  result.setDate(result.getDate() + days);
+  result.setDate(result.getDate() + amount);
   return result;
-};
+}
 
-const getPurchaseTotal = (purchase) => {
+function yearSafe(date, amount) {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth() + amount,
+    1
+  );
+}
+
+function getPurchaseTotal(purchase) {
   if (purchase.total !== undefined) {
     return Number(purchase.total) || 0;
   }
 
-  return (purchase.products || []).reduce((sum, product) => {
-    const quantity = Number(product.quantity) || 0;
-    const price = Number(product.price) || 0;
-    return sum + quantity * price;
-  }, 0);
-};
-
-const yearSafe = (date, monthOffset) => {
-  return new Date(
-    date.getFullYear(),
-    date.getMonth() + monthOffset,
-    1
+  return (purchase.products || []).reduce(
+    (sum, product) =>
+      sum +
+      Number(product.quantity || 0) *
+      Number(product.price || 0),
+    0
   );
-};
+}
 
 export default function HistoryScreen() {
   const [purchases, setPurchases] = useState([]);
@@ -95,67 +97,87 @@ export default function HistoryScreen() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [dateSelectionTarget, setDateSelectionTarget] = useState('start');
 
+  const [selectedCalendarDate, setSelectedCalendarDate] =
+    useState(null);
+
   useEffect(() => {
-    loadHistory();
+    loadPurchases();
   }, []);
 
-  const loadHistory = async () => {
+  async function loadPurchases() {
     try {
-      const result = await getPurchaseHistory();
-      setPurchases(Array.isArray(result) ? result : []);
+      const data = await getPurchaseHistory();
+      setPurchases(Array.isArray(data) ? data : []);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível carregar o histórico.');
+      console.error('Erro ao carregar histórico:', error);
+      setPurchases([]);
     }
-  };
-    
-  const getPeriod = () => {
-    const now = new Date();
+  }
 
+  function getPeriod() {
     if (filterMode === 'month') {
+      const year = selectedMonth.getFullYear();
+      const month = selectedMonth.getMonth();
+
       return {
-        start: new Date(
-          selectedMonth.getFullYear(),
-          selectedMonth.getMonth(),
-          1
-        ),
-        end: endOfDay(
-          new Date(
-            selectedMonth.getFullYear(),
-            selectedMonth.getMonth() + 1,
-            0
-          )
-        ),
+        start: new Date(year, month, 1),
+        end: endOfDay(new Date(year, month + 1, 0)),
       };
     }
 
     if (filterMode === 'week') {
       const date = startOfDay(selectedWeekDate);
       const day = date.getDay();
-      const mondayOffset = day === 0 ? -6 : 1 - day;
-      const start = addDays(date, mondayOffset);
+      const difference = day === 0 ? -6 : 1 - day;
+
+      const monday = addDays(date, difference);
 
       return {
-        start,
-        end: endOfDay(addDays(start, 6)),
+        start: startOfDay(monday),
+        end: endOfDay(addDays(monday, 6)),
+      };
+    }
+
+    if (filterMode === 'calendar') {
+      if (selectedCalendarDate) {
+        return {
+          start: startOfDay(selectedCalendarDate),
+          end: endOfDay(selectedCalendarDate),
+        };
+      }
+
+      const year = calendarMonth.getFullYear();
+      const month = calendarMonth.getMonth();
+
+      return {
+        start: new Date(year, month, 1),
+        end: endOfDay(new Date(year, month + 1, 0)),
       };
     }
 
     return {
-      start: customStart ? startOfDay(customStart) : startOfDay(now),
-      end: customEnd ? endOfDay(customEnd) : endOfDay(now),
+      start: customStart
+        ? startOfDay(customStart)
+        : startOfDay(new Date()),
+
+      end: customEnd
+        ? endOfDay(customEnd)
+        : endOfDay(new Date()),
     };
-  };
+  }
 
   const period = getPeriod();
 
-  const filteredPurchases = purchases
-    .filter((purchase) => {
-      if (!purchase.date) return false;
+  const filteredPurchases = purchases.filter((purchase) => {
+    if (!purchase.date) return false;
 
-      const date = new Date(purchase.date);
-      return date >= period.start && date <= period.end;
-    })
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const purchaseDate = new Date(purchase.date);
+
+    return (
+      purchaseDate >= period.start &&
+      purchaseDate <= period.end
+    );
+  });
 
   const totalSpent = filteredPurchases.reduce(
     (sum, purchase) => sum + getPurchaseTotal(purchase),
@@ -165,45 +187,86 @@ export default function HistoryScreen() {
   const totalDays = Math.max(
     1,
     Math.ceil(
-      (period.end.getTime() - period.start.getTime()) /
-        (1000 * 60 * 60 * 24)
+      (period.end - period.start) / (1000 * 60 * 60 * 24)
     ) + 1
   );
 
   const averagePerDay = totalSpent / totalDays;
 
   const largestPurchase = filteredPurchases.reduce(
-    (largest, purchase) => {
-      return getPurchaseTotal(purchase) > getPurchaseTotal(largest || {})
+    (largest, purchase) =>
+      getPurchaseTotal(purchase) > getPurchaseTotal(largest)
         ? purchase
-        : largest;
-    },
-    null
+        : largest,
+    { total: 0 }
   );
 
-  const monthName = selectedMonth.toLocaleDateString('pt-BR', {
-    month: 'long',
-    year: 'numeric',
-  });
+  const purchasesByDay = purchases.reduce((groups, purchase) => {
+    if (!purchase.date) return groups;
 
-  const changeMonth = (amount) => {
-    const next = new Date(selectedMonth);
-    next.setMonth(next.getMonth() + amount);
-    setSelectedMonth(next);
-  };
+    const date = new Date(purchase.date);
 
-  const changeWeek = (amount) => {
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+
+    groups[key].push(purchase);
+
+    return groups;
+  }, {});
+    function changeMonth(amount) {
+    setSelectedMonth((current) => yearSafe(current, amount));
+  }
+
+  function changeWeek(amount) {
     setSelectedWeekDate((current) => addDays(current, amount * 7));
-  };
+  }
 
-  const openPurchase = (purchase) => {
+  function openDatePicker(target) {
+    setDateSelectionTarget(target);
+    setCalendarMonth(
+      target === 'start' && customStart
+        ? new Date(customStart)
+        : target === 'end' && customEnd
+        ? new Date(customEnd)
+        : new Date()
+    );
+    setCalendarVisible(true);
+  }
+
+  function selectCalendarDate(date) {
+    if (dateSelectionTarget === 'start') {
+      setCustomStart(date);
+
+      if (customEnd && date > customEnd) {
+        setCustomEnd(null);
+      }
+    } else {
+      setCustomEnd(date);
+    }
+
+    setCalendarVisible(false);
+  }
+
+  function selectQuickPeriod(days) {
+    const today = startOfDay(new Date());
+
+    setCustomEnd(today);
+    setCustomStart(
+      startOfDay(addDays(today, -(days - 1)))
+    );
+  }
+
+  function openPurchaseDetails(purchase) {
     setSelectedPurchase(purchase);
     setLocation(purchase.location || '');
     setPaymentMethod(purchase.paymentMethod || '');
     setNotes(purchase.notes || '');
-  };
+  }
 
-  const saveDetails = async () => {
+  async function savePurchaseDetails() {
     if (!selectedPurchase) return;
 
     try {
@@ -213,156 +276,155 @@ export default function HistoryScreen() {
         notes,
       });
 
-      setSelectedPurchase({
-        ...selectedPurchase,
-        location,
-        paymentMethod,
-        notes,
-      });
+      await loadPurchases();
 
-      await loadHistory();
-      Alert.alert('Salvo', 'Os detalhes da compra foram atualizados.');
+      setSelectedPurchase(null);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar os detalhes.');
+      console.error('Erro ao salvar detalhes:', error);
     }
-  };
+  }
 
-  const openDatePicker = (target) => {
-    setDateSelectionTarget(target);
-
-    const currentDate =
-      target === 'start'
-        ? customStart || new Date()
-        : customEnd || customStart || new Date();
-
-    setCalendarMonth(new Date(currentDate));
-    setCalendarVisible(true);
-  };
-
-  const selectCalendarDate = (day) => {
-    const selected = new Date(
-      calendarMonth.getFullYear(),
-      calendarMonth.getMonth(),
-      day
-    );
-
-    if (dateSelectionTarget === 'start') {
-      setCustomStart(selected);
-      setCustomEnd(null);
-      setDateSelectionTarget('end');
-      return;
-    }
-
-    if (customStart && selected < customStart) {
-      Alert.alert(
-        'Data inválida',
-        'A data final não pode ser anterior à data inicial.'
-      );
-      return;
-    }
-
-    setCustomEnd(selected);
-    setFilterMode('custom');
-    setCalendarVisible(false);
-  };
-
-  const selectQuickPeriod = (days) => {
-    const today = new Date();
-    setCustomEnd(today);
-    setCustomStart(addDays(today, -(days - 1)));
-    setFilterMode('custom');
-  };
-  
-  const renderCalendar = () => {
+  function renderCalendar() {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
+
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    const blanks = Array.from({ length: firstDay }, (_, index) => (
-      <View key={`blank-${index}`} style={styles.calendarDay} />
-    ));
-
-    const days = Array.from({ length: daysInMonth }, (_, index) => {
-      const day = index + 1;
-
-      return (
-        <TouchableOpacity
-          key={day}
-          style={styles.calendarDay}
-          onPress={() => selectCalendarDate(day)}
-        >
-          <Text style={styles.calendarDayText}>{day}</Text>
-        </TouchableOpacity>
-      );
-    });
+    const weekdays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
     return (
-      <View style={styles.calendarGrid}>
-        {blanks}
-        {days}
-      </View>
-    );
-  };
+      <View>
+        <View style={styles.periodSelector}>
+          <TouchableOpacity
+            onPress={() =>
+              setCalendarMonth((current) => yearSafe(current, -1))
+            }
+          >
+            <Text style={styles.arrow}>‹</Text>
+          </TouchableOpacity>
 
-  const purchasesByDay = purchases.reduce((groups, purchase) => {
-    if (!purchase.date) return groups;
+          <Text style={styles.periodText}>
+            {calendarMonth.toLocaleDateString('pt-BR', {
+              month: 'long',
+              year: 'numeric',
+            })}
+          </Text>
 
-    const date = new Date(purchase.date);
-    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+          <TouchableOpacity
+            onPress={() =>
+              setCalendarMonth((current) => yearSafe(current, 1))
+            }
+          >
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+        </View>
 
-    if (!groups[key]) groups[key] = [];
-
-    groups[key].push(purchase);
-    return groups;
-  }, {});
-
-  const renderPurchaseCalendar = () => {
-    const year = calendarMonth.getFullYear();
-    const month = calendarMonth.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    return (
-      <View style={styles.monthCalendar}>
         <View style={styles.calendarGrid}>
-          {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => (
+          {weekdays.map((day, index) => (
             <View key={index} style={styles.calendarDay}>
               <Text style={styles.calendarWeekday}>{day}</Text>
             </View>
           ))}
 
-          {Array.from({ length: firstDay }, (_, index) => (
+          {Array.from({ length: firstDay }).map((_, index) => (
             <View key={`empty-${index}`} style={styles.calendarDay} />
           ))}
 
-          {Array.from({ length: daysInMonth }, (_, index) => {
+          {Array.from({ length: daysInMonth }).map((_, index) => {
             const day = index + 1;
+
+            return (
+              <TouchableOpacity
+                key={day}
+                style={styles.calendarDay}
+                onPress={() =>
+                  selectCalendarDate(new Date(year, month, day))
+                }
+              >
+                <Text style={styles.calendarDayText}>
+                  {day}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
+
+  function renderPurchaseCalendar() {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const weekdays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+    return (
+      <View style={styles.monthCalendar}>
+        <View style={styles.calendarGrid}>
+          {weekdays.map((day, index) => (
+            <View key={index} style={styles.monthDay}>
+              <Text style={styles.calendarWeekday}>{day}</Text>
+            </View>
+          ))}
+
+          {Array.from({ length: firstDay }).map((_, index) => (
+            <View
+              key={`empty-${index}`}
+              style={styles.monthDay}
+            />
+          ))}
+
+          {Array.from({ length: daysInMonth }).map((_, index) => {
+            const day = index + 1;
+
             const key = `${year}-${month}-${day}`;
+
             const dayPurchases = purchasesByDay[key] || [];
+
             const dayTotal = dayPurchases.reduce(
-              (sum, purchase) => sum + getPurchaseTotal(purchase),
+              (sum, purchase) =>
+                sum + getPurchaseTotal(purchase),
               0
             );
+
+            const isSelected =
+              selectedCalendarDate &&
+              selectedCalendarDate.getFullYear() === year &&
+              selectedCalendarDate.getMonth() === month &&
+              selectedCalendarDate.getDate() === day;
 
             return (
               <TouchableOpacity
                 key={day}
                 style={[
                   styles.monthDay,
-                  dayPurchases.length > 0 && styles.monthDayActive,
+                  isSelected && styles.monthDayActive,
                 ]}
                 onPress={() => {
-                  setSelectedWeekDate(new Date(year, month, day));
-                  setFilterMode('calendar');
+                  setSelectedCalendarDate(
+                    new Date(year, month, day)
+                  );
                 }}
               >
-                <Text style={styles.calendarDayText}>{day}</Text>
+                <Text
+                  style={[
+                    styles.monthDayText,
+                    isSelected && styles.monthDayTextActive,
+                  ]}
+                >
+                  {day}
+                </Text>
+
                 {dayPurchases.length > 0 && (
                   <>
                     <View style={styles.purchaseDot} />
+
                     <Text style={styles.monthDayTotal}>
-                      {dayTotal.toFixed(0)}
+                      {Math.round(dayTotal)}
                     </Text>
                   </>
                 )}
@@ -370,50 +432,71 @@ export default function HistoryScreen() {
             );
           })}
         </View>
+
+        <Text style={styles.calendarLegend}>
+          Os valores abaixo dos dias representam gastos em reais.
+        </Text>
+
+        {selectedCalendarDate && (
+          <TouchableOpacity
+            style={styles.clearCalendarSelection}
+            onPress={() => setSelectedCalendarDate(null)}
+          >
+            <Text style={styles.clearCalendarSelectionText}>
+              Ver mês inteiro
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
-  };
-            
-  const renderPurchase = (purchase, index) => {
-    const total = getPurchaseTotal(purchase);
+  }
+
+  function renderPurchase(purchase) {
     const products = purchase.products || [];
 
     return (
-      <TouchableOpacity
-        key={purchase.id || index}
-        style={styles.purchaseCard}
-        onPress={() => openPurchase(purchase)}
-      >
+      <View key={purchase.id} style={styles.purchaseCard}>
         <View style={styles.purchaseHeader}>
           <View style={{ flex: 1 }}>
             <Text style={styles.purchaseTitle}>
-              {purchase.location || `Compra ${index + 1}`}
+              Compra
             </Text>
+
             <Text style={styles.purchaseDate}>
               {formatDate(purchase.date)}
             </Text>
           </View>
 
-          <Text style={styles.purchaseTotal}>{formatMoney(total)}</Text>
+          <Text style={styles.purchaseTotal}>
+            {formatMoney(getPurchaseTotal(purchase))}
+          </Text>
         </View>
 
         <Text style={styles.productCount}>
-          {products.length} {products.length === 1 ? 'produto' : 'produtos'}
+          {products.length}{' '}
+          {products.length === 1 ? 'produto' : 'produtos'}
         </Text>
 
-        <Text style={styles.detailsLink}>Ver detalhes →</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => openPurchaseDetails(purchase)}
+        >
+          <Text style={styles.detailsLink}>
+            Ver detalhes e editar
+          </Text>
+        </TouchableOpacity>
+      </View>
     );
-  };
-
+      }
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.pageTitle}>Meu Histórico</Text>
+        <Text style={styles.pageTitle}>Histórico</Text>
+
         <Text style={styles.subtitle}>
           Acompanhe suas compras e seus gastos.
         </Text>
 
+        {/* FILTROS */}
         <View style={styles.filterContainer}>
           <TouchableOpacity
             style={[
@@ -465,14 +548,16 @@ export default function HistoryScreen() {
               Personalizado
             </Text>
           </TouchableOpacity>
-                          <TouchableOpacity
+
+          <TouchableOpacity
             style={[
               styles.filterButton,
               filterMode === 'calendar' && styles.filterButtonActive,
             ]}
             onPress={() => {
-              setFilterMode('calendar');
               setCalendarMonth(new Date(selectedMonth));
+              setSelectedCalendarDate(null);
+              setFilterMode('calendar');
             }}
           >
             <Text
@@ -486,13 +571,19 @@ export default function HistoryScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* FILTRO MENSAL */}
         {filterMode === 'month' && (
           <View style={styles.periodSelector}>
             <TouchableOpacity onPress={() => changeMonth(-1)}>
               <Text style={styles.arrow}>‹</Text>
             </TouchableOpacity>
 
-            <Text style={styles.periodText}>{monthName}</Text>
+            <Text style={styles.periodText}>
+              {selectedMonth.toLocaleDateString('pt-BR', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </Text>
 
             <TouchableOpacity onPress={() => changeMonth(1)}>
               <Text style={styles.arrow}>›</Text>
@@ -500,6 +591,7 @@ export default function HistoryScreen() {
           </View>
         )}
 
+        {/* FILTRO SEMANAL */}
         {filterMode === 'week' && (
           <View style={styles.periodSelector}>
             <TouchableOpacity onPress={() => changeWeek(-1)}>
@@ -516,15 +608,21 @@ export default function HistoryScreen() {
           </View>
         )}
 
+        {/* FILTRO PERSONALIZADO */}
         {filterMode === 'custom' && (
           <View style={styles.customContainer}>
             <TouchableOpacity
               style={styles.dateButton}
               onPress={() => openDatePicker('start')}
             >
-              <Text style={styles.dateButtonLabel}>Data inicial</Text>
+              <Text style={styles.dateButtonLabel}>
+                Data inicial
+              </Text>
+
               <Text style={styles.dateButtonValue}>
-                {customStart ? formatDate(customStart) : 'Selecionar'}
+                {customStart
+                  ? formatDate(customStart)
+                  : 'Selecionar data'}
               </Text>
             </TouchableOpacity>
 
@@ -532,9 +630,14 @@ export default function HistoryScreen() {
               style={styles.dateButton}
               onPress={() => openDatePicker('end')}
             >
-              <Text style={styles.dateButtonLabel}>Data final</Text>
+              <Text style={styles.dateButtonLabel}>
+                Data final
+              </Text>
+
               <Text style={styles.dateButtonValue}>
-                {customEnd ? formatDate(customEnd) : 'Selecionar'}
+                {customEnd
+                  ? formatDate(customEnd)
+                  : 'Selecionar data'}
               </Text>
             </TouchableOpacity>
 
@@ -543,26 +646,37 @@ export default function HistoryScreen() {
                 style={styles.quickButton}
                 onPress={() => selectQuickPeriod(7)}
               >
-                <Text style={styles.quickText}>Últimos 7 dias</Text>
+                <Text style={styles.quickText}>7 dias</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickButton}
+                onPress={() => selectQuickPeriod(15)}
+              >
+                <Text style={styles.quickText}>15 dias</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.quickButton}
                 onPress={() => selectQuickPeriod(30)}
               >
-                <Text style={styles.quickText}>Últimos 30 dias</Text>
+                <Text style={styles.quickText}>30 dias</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
+        {/* CALENDÁRIO MENSAL */}
         {filterMode === 'calendar' && (
           <View>
             <View style={styles.periodSelector}>
               <TouchableOpacity
-                onPress={() =>
-                  setCalendarMonth(yearSafe(calendarMonth, -1))
-                }
+                onPress={() => {
+                  setCalendarMonth((current) =>
+                    yearSafe(current, -1)
+                  );
+                  setSelectedCalendarDate(null);
+                }}
               >
                 <Text style={styles.arrow}>‹</Text>
               </TouchableOpacity>
@@ -575,9 +689,12 @@ export default function HistoryScreen() {
               </Text>
 
               <TouchableOpacity
-                onPress={() =>
-                  setCalendarMonth(yearSafe(calendarMonth, 1))
-                }
+                onPress={() => {
+                  setCalendarMonth((current) =>
+                    yearSafe(current, 1)
+                  );
+                  setSelectedCalendarDate(null);
+                }}
               >
                 <Text style={styles.arrow}>›</Text>
               </TouchableOpacity>
@@ -586,23 +703,35 @@ export default function HistoryScreen() {
             {renderPurchaseCalendar()}
           </View>
         )}
-                  
+
+        {/* RESUMO */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Total gasto no período</Text>
-          <Text style={styles.summaryTotal}>{formatMoney(totalSpent)}</Text>
+          <Text style={styles.summaryLabel}>
+            Total gasto no período
+          </Text>
+
+          <Text style={styles.summaryTotal}>
+            {formatMoney(totalSpent)}
+          </Text>
 
           <View style={styles.summaryDivider} />
 
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
-              <Text style={styles.summarySmallLabel}>Compras</Text>
+              <Text style={styles.summarySmallLabel}>
+                Compras
+              </Text>
+
               <Text style={styles.summaryValue}>
                 {filteredPurchases.length}
               </Text>
             </View>
 
             <View style={styles.summaryItem}>
-              <Text style={styles.summarySmallLabel}>Média diária</Text>
+              <Text style={styles.summarySmallLabel}>
+                Média por dia
+              </Text>
+
               <Text style={styles.summaryValue}>
                 {formatMoney(averagePerDay)}
               </Text>
@@ -610,31 +739,39 @@ export default function HistoryScreen() {
           </View>
 
           <View style={styles.largestBox}>
-            <Text style={styles.summarySmallLabel}>Maior compra</Text>
+            <Text style={styles.summarySmallLabel}>
+              Maior compra
+            </Text>
+
             <Text style={styles.largestValue}>
-              {largestPurchase
-                ? formatMoney(getPurchaseTotal(largestPurchase))
-                : formatMoney(0)}
+              {formatMoney(getPurchaseTotal(largestPurchase))}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Compras realizadas</Text>
+        {/* LISTA DE COMPRAS */}
+        <Text style={styles.sectionTitle}>
+          {filterMode === 'calendar' && selectedCalendarDate
+            ? `Compras de ${formatDate(selectedCalendarDate)}`
+            : 'Compras realizadas'}
+        </Text>
 
-        {filteredPurchases.length === 0 ? (
+        {filteredPurchases.length > 0 ? (
+          filteredPurchases.map(renderPurchase)
+        ) : (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Nenhuma compra encontrada</Text>
+            <Text style={styles.emptyTitle}>
+              Nenhuma compra encontrada
+            </Text>
+
             <Text style={styles.emptyText}>
-              Não há compras registradas neste período.
+              Não existem compras registradas neste período.
             </Text>
           </View>
-        ) : (
-          filteredPurchases.map(renderPurchase)
         )}
-
-        <View style={{ height: 30 }} />
       </ScrollView>
-              
+
+      {/* MODAL DE SELEÇÃO DE DATA */}
       <Modal
         visible={calendarVisible}
         transparent
@@ -644,45 +781,8 @@ export default function HistoryScreen() {
         <View style={styles.modalBackground}>
           <View style={styles.calendarModal}>
             <Text style={styles.modalTitle}>
-              {dateSelectionTarget === 'start'
-                ? 'Escolha a data inicial'
-                : 'Escolha a data final'}
+              Selecionar data
             </Text>
-
-            <View style={styles.periodSelector}>
-              <TouchableOpacity
-                onPress={() =>
-                  setCalendarMonth(yearSafe(calendarMonth, -1))
-                }
-              >
-                <Text style={styles.arrow}>‹</Text>
-              </TouchableOpacity>
-
-              <Text style={styles.periodText}>
-                {calendarMonth.toLocaleDateString('pt-BR', {
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </Text>
-
-              <TouchableOpacity
-                onPress={() =>
-                  setCalendarMonth(yearSafe(calendarMonth, 1))
-                }
-              >
-                <Text style={styles.arrow}>›</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.calendarGrid}>
-              {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(
-                (day, index) => (
-                  <View key={index} style={styles.calendarDay}>
-                    <Text style={styles.calendarWeekday}>{day}</Text>
-                  </View>
-                )
-              )}
-            </View>
 
             {renderCalendar()}
 
@@ -690,12 +790,15 @@ export default function HistoryScreen() {
               style={styles.closeButton}
               onPress={() => setCalendarVisible(false)}
             >
-              <Text style={styles.closeButtonText}>Fechar</Text>
+              <Text style={styles.closeButtonText}>
+                Cancelar
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
+      {/* MODAL DE DETALHES DA COMPRA */}
       <Modal
         visible={!!selectedPurchase}
         transparent
@@ -705,7 +808,9 @@ export default function HistoryScreen() {
         <View style={styles.modalBackground}>
           <View style={styles.detailsModal}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>Detalhes da compra</Text>
+              <Text style={styles.modalTitle}>
+                Detalhes da compra
+              </Text>
 
               {selectedPurchase && (
                 <>
@@ -713,24 +818,27 @@ export default function HistoryScreen() {
                     {formatDate(selectedPurchase.date)}
                   </Text>
 
-                  <Text style={styles.sectionTitle}>Produtos</Text>
-
                   {(selectedPurchase.products || []).map(
                     (product, index) => (
-                      <View key={index} style={styles.productRow}>
+                      <View
+                        key={`${index}`}
+                        style={styles.productRow}
+                      >
                         <View style={{ flex: 1 }}>
                           <Text style={styles.productName}>
-                            {product.name || product.title || 'Produto'}
+                            {product.name}
                           </Text>
+
                           <Text style={styles.productInfo}>
-                            Quantidade: {product.quantity || 1}
+                            {product.quantity} x{' '}
+                            {formatMoney(product.price)}
                           </Text>
                         </View>
 
                         <Text style={styles.productPrice}>
                           {formatMoney(
-                            (Number(product.quantity) || 1) *
-                              (Number(product.price) || 0)
+                            Number(product.quantity) *
+                              Number(product.price)
                           )}
                         </Text>
                       </View>
@@ -738,40 +846,51 @@ export default function HistoryScreen() {
                   )}
 
                   <Text style={styles.detailTotal}>
-                    Total: {formatMoney(getPurchaseTotal(selectedPurchase))}
+                    Total: {formatMoney(
+                      getPurchaseTotal(selectedPurchase)
+                    )}
                   </Text>
 
-                  <Text style={styles.inputLabel}>Local da compra</Text>
+                  <Text style={styles.inputLabel}>
+                    Local da compra
+                  </Text>
+
                   <TextInput
                     style={styles.input}
                     value={location}
                     onChangeText={setLocation}
                     placeholder="Ex.: Supermercado"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={COLORS.muted}
                   />
 
-                  <Text style={styles.inputLabel}>Forma de pagamento</Text>
+                  <Text style={styles.inputLabel}>
+                    Forma de pagamento
+                  </Text>
+
                   <TextInput
                     style={styles.input}
                     value={paymentMethod}
                     onChangeText={setPaymentMethod}
-                    placeholder="Ex.: Pix, dinheiro, cartão"
-                    placeholderTextColor="#999"
+                    placeholder="Ex.: Dinheiro, Pix ou cartão"
+                    placeholderTextColor={COLORS.muted}
                   />
 
-                  <Text style={styles.inputLabel}>Observações</Text>
+                  <Text style={styles.inputLabel}>
+                    Observações
+                  </Text>
+
                   <TextInput
                     style={[styles.input, styles.notesInput]}
                     value={notes}
                     onChangeText={setNotes}
                     placeholder="Adicione uma observação..."
-                    placeholderTextColor="#999"
+                    placeholderTextColor={COLORS.muted}
                     multiline
                   />
 
                   <TouchableOpacity
                     style={styles.saveButton}
-                    onPress={saveDetails}
+                    onPress={savePurchaseDetails}
                   >
                     <Text style={styles.saveButtonText}>
                       Salvar alterações
@@ -782,7 +901,9 @@ export default function HistoryScreen() {
                     style={styles.closeButton}
                     onPress={() => setSelectedPurchase(null)}
                   >
-                    <Text style={styles.closeButtonText}>Fechar</Text>
+                    <Text style={styles.closeButtonText}>
+                      Fechar
+                    </Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -792,8 +913,7 @@ export default function HistoryScreen() {
       </Modal>
     </View>
   );
-}
-
+                }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -801,17 +921,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
   },
+
   pageTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.text,
   },
+
   subtitle: {
     fontSize: 14,
     color: COLORS.muted,
     marginTop: 4,
     marginBottom: 18,
   },
+
   filterContainer: {
     flexDirection: 'row',
     backgroundColor: COLORS.white,
@@ -819,62 +942,77 @@ const styles = StyleSheet.create({
     padding: 4,
     marginBottom: 14,
   },
+
   filterButton: {
     flex: 1,
     paddingVertical: 10,
+    paddingHorizontal: 2,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 9,
   },
+
   filterButtonActive: {
     backgroundColor: COLORS.primary,
   },
+
   filterText: {
     color: COLORS.muted,
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: '600',
   },
+
   filterTextActive: {
     color: COLORS.white,
   },
+
   periodSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginVertical: 12,
   },
+
   periodText: {
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.text,
     textTransform: 'capitalize',
   },
+
   arrow: {
     fontSize: 30,
     color: COLORS.primary,
     paddingHorizontal: 12,
   },
+
   customContainer: {
     marginBottom: 12,
   },
+
   dateButton: {
     backgroundColor: COLORS.white,
     borderRadius: 10,
     padding: 12,
     marginBottom: 8,
   },
+
   dateButtonLabel: {
     color: COLORS.muted,
     fontSize: 12,
   },
+
   dateButtonValue: {
     color: COLORS.text,
     fontWeight: '600',
     marginTop: 4,
   },
+
   quickFilters: {
     flexDirection: 'row',
     gap: 8,
   },
+
   quickButton: {
     flex: 1,
     padding: 10,
@@ -882,120 +1020,209 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: 'center',
   },
+
   quickText: {
     color: COLORS.primary,
     fontWeight: '600',
     fontSize: 12,
   },
+
   summaryCard: {
     backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 18,
     marginBottom: 22,
   },
+
   summaryLabel: {
     color: COLORS.muted,
     fontSize: 13,
   },
+
   summaryTotal: {
     color: COLORS.text,
     fontSize: 28,
     fontWeight: 'bold',
     marginTop: 6,
   },
+
   summaryDivider: {
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: 16,
   },
+
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+
   summaryItem: {
     flex: 1,
   },
+
   summarySmallLabel: {
     color: COLORS.muted,
     fontSize: 12,
   },
+
   summaryValue: {
     color: COLORS.text,
     fontSize: 17,
     fontWeight: 'bold',
     marginTop: 5,
   },
+
   largestBox: {
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     marginTop: 14,
     paddingTop: 12,
   },
+
   largestValue: {
     color: COLORS.green,
     fontSize: 18,
     fontWeight: 'bold',
     marginTop: 4,
   },
+
   sectionTitle: {
     color: COLORS.text,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
   },
+
   purchaseCard: {
     backgroundColor: COLORS.white,
     borderRadius: 13,
     padding: 15,
     marginBottom: 10,
   },
+
   purchaseHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+
   purchaseTitle: {
     color: COLORS.text,
     fontSize: 15,
     fontWeight: 'bold',
   },
+
   purchaseDate: {
     color: COLORS.muted,
     fontSize: 12,
     marginTop: 4,
   },
+
   purchaseTotal: {
     color: COLORS.green,
     fontWeight: 'bold',
     fontSize: 16,
   },
+
   productCount: {
     color: COLORS.muted,
     fontSize: 12,
     marginTop: 12,
   },
+
   detailsLink: {
     color: COLORS.primary,
     fontWeight: '600',
     fontSize: 12,
     marginTop: 8,
   },
+
   emptyCard: {
     backgroundColor: COLORS.white,
     padding: 22,
     borderRadius: 12,
     alignItems: 'center',
   },
+
   emptyTitle: {
     fontSize: 15,
     fontWeight: 'bold',
     color: COLORS.text,
   },
+
   emptyText: {
     color: COLORS.muted,
     fontSize: 13,
     marginTop: 6,
     textAlign: 'center',
   },
+
+  monthCalendar: {
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 8,
+    marginBottom: 18,
+  },
+
+  monthDay: {
+    width: '14.2857%',
+    minHeight: 58,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    paddingVertical: 4,
+  },
+
+  monthDayActive: {
+    backgroundColor: '#DCEBFA',
+  },
+
+  monthDayText: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  monthDayTextActive: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+
+  purchaseDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: COLORS.green,
+    marginTop: 2,
+  },
+
+  monthDayTotal: {
+    color: COLORS.green,
+    fontSize: 8,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+
+  calendarLegend: {
+    color: COLORS.muted,
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+
+  clearCalendarSelection: {
+    alignItems: 'center',
+    padding: 10,
+    marginTop: 4,
+  },
+
+  clearCalendarSelectionText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+
   modalBackground: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -1003,12 +1230,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
   },
+
   calendarModal: {
     width: '100%',
     backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 18,
   },
+
   detailsModal: {
     width: '100%',
     maxHeight: '90%',
@@ -1016,30 +1245,36 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
   },
+
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.text,
     marginBottom: 8,
   },
+
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+
   calendarDay: {
     width: '14.2857%',
     height: 42,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   calendarDayText: {
     color: COLORS.text,
     fontSize: 14,
   },
+
   calendarWeekday: {
     color: COLORS.muted,
     fontWeight: 'bold',
   },
+
   closeButton: {
     padding: 13,
     borderRadius: 10,
@@ -1047,14 +1282,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
   },
+
   closeButtonText: {
     color: COLORS.primary,
     fontWeight: 'bold',
   },
+
   detailDate: {
     color: COLORS.muted,
     marginBottom: 16,
   },
+
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1062,19 +1300,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
+
   productName: {
     color: COLORS.text,
     fontWeight: '600',
   },
+
   productInfo: {
     color: COLORS.muted,
     fontSize: 12,
     marginTop: 3,
   },
+
   productPrice: {
     color: COLORS.text,
     fontWeight: '600',
   },
+
   detailTotal: {
     color: COLORS.green,
     fontWeight: 'bold',
@@ -1082,12 +1324,14 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginVertical: 16,
   },
+
   inputLabel: {
     color: COLORS.text,
     fontWeight: '600',
     marginTop: 12,
     marginBottom: 6,
   },
+
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -1096,10 +1340,12 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     backgroundColor: COLORS.white,
   },
+
   notesInput: {
     minHeight: 80,
     textAlignVertical: 'top',
   },
+
   saveButton: {
     backgroundColor: COLORS.primary,
     padding: 14,
@@ -1107,9 +1353,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 18,
   },
+
   saveButtonText: {
     color: COLORS.white,
     fontWeight: 'bold',
   },
 });
-                                        
