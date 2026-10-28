@@ -247,11 +247,13 @@ export default function HomeScreen() {
 
             <Text style={styles.label}>Quantidade</Text>
             <TextInput
-              style={styles.input}
-              value={editQuantity}
-              onChangeText={setEditQuantity}
-              keyboardType="decimal-pad"
-            />
+  style={styles.input}
+  value={editQuantity}
+  onChangeText={(value) =>
+    setEditQuantity(value.replace(/\D/g, ''))
+  }
+  keyboardType="number-pad"
+/>
 
             <Text style={styles.label}>Valor unitário (R$)</Text>
             <TextInput
