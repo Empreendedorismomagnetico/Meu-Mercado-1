@@ -556,6 +556,37 @@ export default function HistoryScreen() {
           </View>
         )}
 
+        {filterMode === 'calendar' && (
+          <View>
+            <View style={styles.periodSelector}>
+              <TouchableOpacity
+                onPress={() =>
+                  setCalendarMonth(yearSafe(calendarMonth, -1))
+                }
+              >
+                <Text style={styles.arrow}>‹</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.periodText}>
+                {calendarMonth.toLocaleDateString('pt-BR', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  setCalendarMonth(yearSafe(calendarMonth, 1))
+                }
+              >
+                <Text style={styles.arrow}>›</Text>
+              </TouchableOpacity>
+            </View>
+
+            {renderPurchaseCalendar()}
+          </View>
+        )}
+                  
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Total gasto no período</Text>
           <Text style={styles.summaryTotal}>{formatMoney(totalSpent)}</Text>
