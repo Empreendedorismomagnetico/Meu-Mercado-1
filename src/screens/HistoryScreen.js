@@ -396,6 +396,25 @@ export default function HistoryScreen() {
               Personalizado
             </Text>
           </TouchableOpacity>
+                          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filterMode === 'calendar' && styles.filterButtonActive,
+            ]}
+            onPress={() => {
+              setFilterMode('calendar');
+              setCalendarMonth(new Date(selectedMonth));
+            }}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                filterMode === 'calendar' && styles.filterTextActive,
+              ]}
+            >
+              Calendário
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {filterMode === 'month' && (
