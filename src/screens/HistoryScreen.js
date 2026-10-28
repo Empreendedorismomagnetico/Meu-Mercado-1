@@ -305,6 +305,75 @@ export default function HistoryScreen() {
     );
   };
 
+  const purchasesByDay = purchases.reduce((groups, purchase) => {
+    if (!purchase.date) return groups;
+
+    const date = new Date(purchase.date);
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+    if (!groups[key]) groups[key] = [];
+
+    groups[key].push(purchase);
+    return groups;
+  }, {});
+
+  const renderPurchaseCalendar = () => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    return (
+      <View style={styles.monthCalendar}>
+        <View style={styles.calendarGrid}>
+          {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => (
+            <View key={index} style={styles.calendarDay}>
+              <Text style={styles.calendarWeekday}>{day}</Text>
+            </View>
+          ))}
+
+          {Array.from({ length: firstDay }, (_, index) => (
+            <View key={`empty-${index}`} style={styles.calendarDay} />
+          ))}
+
+          {Array.from({ length: daysInMonth }, (_, index) => {
+            const day = index + 1;
+            const key = `${year}-${month}-${day}`;
+            const dayPurchases = purchasesByDay[key] || [];
+            const dayTotal = dayPurchases.reduce(
+              (sum, purchase) => sum + getPurchaseTotal(purchase),
+              0
+            );
+
+            return (
+              <TouchableOpacity
+                key={day}
+                style={[
+                  styles.monthDay,
+                  dayPurchases.length > 0 && styles.monthDayActive,
+                ]}
+                onPress={() => {
+                  setSelectedWeekDate(new Date(year, month, day));
+                  setFilterMode('calendar');
+                }}
+              >
+                <Text style={styles.calendarDayText}>{day}</Text>
+                {dayPurchases.length > 0 && (
+                  <>
+                    <View style={styles.purchaseDot} />
+                    <Text style={styles.monthDayTotal}>
+                      {dayTotal.toFixed(0)}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+            
   const renderPurchase = (purchase, index) => {
     const total = getPurchaseTotal(purchase);
     const products = purchase.products || [];
